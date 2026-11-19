@@ -1,0 +1,21 @@
+
+# Dependencias
+node_modules/
+
+# Archivos generados por Vite
+dist/
+dist-ssr/
+
+# Variables de entorno locales
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Archivos del editor y sistema
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
