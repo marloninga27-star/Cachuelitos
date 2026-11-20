@@ -134,7 +134,9 @@ const id = () =>
 function App() {
   const [db, setDb] = useState(load),
     [uid, setUid] = useState(""),
-    [screen, setScreen] = useState("welcome"),
+    [screen, setScreen] = useState(() => {
+      return sessionStorage.getItem("cachuelitos_screen") || "welcome";
+    }),
     [role, setRole] = useState("estudiante"),
     [mode, setMode] = useState("login"),
     [form, setForm] = useState({}),
@@ -148,6 +150,7 @@ function App() {
     [photoError, setPhotoError] = useState("");
 
   const [user, setUser] = useState(null);
+  const [verificationFile, setVerificationFile] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [jobs, setJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(false);
@@ -256,6 +259,10 @@ function App() {
       cargarPostulaciones();
     }
 
+    sessionStorage.setItem("cachuelitos_screen", s);
+    if (user?.id) {
+      localStorage.setItem(`cachuelitos_screen_${user.id}`, s);
+    }
     setScreen(s);
     setForm({});
     setErrors({});
@@ -298,7 +305,57 @@ function App() {
 
       setUser(usuario);
       setUid(usuario.id);
-      setScreen(usuario.role === "admin" ? "admin" : "home");
+
+      const pantallaGuardada = localStorage.getItem(
+        `cachuelitos_screen_${usuario.id}`,
+      );
+
+      const pantallaActual = sessionStorage.getItem("cachuelitos_screen");
+
+      if (
+        pantallaActual &&
+        pantallaActual !== "welcome" &&
+        pantallaActual !== "auth"
+      ) {
+        localStorage.setItem(
+          `cachuelitos_screen_${usuario.id}`,
+          pantallaActual,
+        );
+      }
+
+      const pantallasPermitidas = {
+        estudiante: ["home", "profile", "verify", "applications", "detail"],
+        contratante: [
+          "home",
+          "profile",
+          "applications",
+          "detail",
+          "my-jobs",
+          "publish",
+        ],
+        admin: ["admin", "home", "profile", "applications", "detail"],
+      };
+
+      const pantallaInicial = pantallasPermitidas[usuario.role]?.includes(
+        pantallaGuardada,
+      )
+        ? pantallaGuardada
+        : usuario.role === "admin"
+          ? "admin"
+          : "home";
+
+      setScreen((pantallaActual) => {
+        const pantallasTemporales = ["welcome", "auth"];
+
+        if (
+          !pantallasTemporales.includes(pantallaActual) &&
+          pantallasPermitidas[usuario.role]?.includes(pantallaActual)
+        ) {
+          return pantallaActual;
+        }
+
+        return pantallaInicial;
+      });
       setAuthLoading(false);
     };
 
@@ -331,6 +388,16 @@ function App() {
         setAuthLoading(false);
       }
 
+      if (event === "SIGNED_IN" && session?.user) {
+        setUser((usuarioActual) => {
+          if (usuarioActual?.id === session.user.id) {
+            return usuarioActual;
+          }
+
+          cargarPerfil(session.user);
+          return usuarioActual;
+        });
+      }
       if (event === "SIGNED_IN" && session?.user) {
         cargarPerfil(session.user);
       }
@@ -593,7 +660,8 @@ function App() {
       return;
     }
 
-    const archivo = e.currentTarget.elements.document.files?.[0];
+    const archivo =
+      verificationFile || e.currentTarget.elements.document.files?.[0];
 
     if (!archivo) {
       notice("Selecciona un documento.");
@@ -1414,12 +1482,17 @@ function App() {
                     Sube una foto clara de tu carné universitario o constancia
                     vigente.
                   </p>
+
                   <input
                     name="document"
                     type="file"
                     accept="image/jpeg,image/png,application/pdf"
-                    required
+                    onChange={(e) => {
+                      setVerificationFile(e.target.files?.[0] || null);
+                    }}
+                    required={!verificationFile}
                   />
+
                   <small>JPG, PNG o PDF (máx. 5 MB)</small>
                 </div>
                 <p className="helper">
