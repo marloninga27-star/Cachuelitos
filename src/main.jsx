@@ -725,6 +725,12 @@ function App() {
       return;
     }
 
+    setUser((anterior) => ({
+      ...anterior,
+      verificationStatus: "pendiente",
+      verified: false,
+    }));
+
     notice("Documento enviado correctamente. Pendiente de revisión.");
     go("home");
   };
